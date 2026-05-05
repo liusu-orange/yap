@@ -1,0 +1,16 @@
+Bump_0 uBUMP 0 60 sig_a sig_a
+Bump_1 uBUMP 20 60 sig_b sig_b
+Bump_2 uBUMP 40 60 rd_link rd_link
+Bump_3 uBUMP 60 60 VDD VDD
+Bump_4 uBUMP 0 40 sig_c sig_c
+Bump_5 uBUMP 20 40 rd_link rd_link
+Bump_6 uBUMP 40 40 dummy dummy
+Bump_7 uBUMP 60 40 VSS VSS
+Bump_8 uBUMP 0 20 sig_d sig_d
+Bump_9 uBUMP 20 20 rd_bus rd_bus
+Bump_10 uBUMP 40 20 rd_bus rd_bus
+Bump_11 uBUMP 60 20 dummy dummy
+Bump_12 uBUMP 0 0 VDD VDD
+Bump_13 uBUMP 20 0 sig_e sig_e
+Bump_14 uBUMP 40 0 dummy dummy
+Bump_15 uBUMP 60 0 VSS VSS

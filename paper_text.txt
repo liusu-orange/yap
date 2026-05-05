@@ -1,0 +1,648 @@
+                                                                                                                                      YAP: Yield Modeling and Simulation for Advanced
+                                                                                                                                                                Packaging
+
+                                                                                                                                                                        Zhichao Chen, Puneet Gupta
+                                                                                                                                      Department of Electrical and Computer Engineering, University of California, Los Angeles
+
+                                                                                                                                                                     zhichaochen@ucla.edu, puneetg@ucla.edu
+
+2025 62nd ACM/IEEE Design Automation Conference (DAC) | 979-8-3315-0304-8/25/$31.00 ©2025 IEEE | DOI: 10.1109/DAC63849.2025.11132483     Abstract--Three-dimensional integration technologies present a         Failure mechanisms for hybrid bonding are complex which
+                                                                                                                                      promising path forward for extending Moore's law, facilitating         makes analytical modeling of yield challenging. This paper
+                                                                                                                                      high-density interconnects between chips and supporting multi-         proposes YAP, a physical mechanism-driven near-analytical
+                                                                                                                                      tier architectural designs. Cu-Cu hybrid bonding has emerged           yield model. To the best of our knowledge, YAP is the first
+                                                                                                                                      as a favored technique for the integration of chiplets at high         yield model tailored for the HB process, which provides
+                                                                                                                                      interconnect density. This paper introduces YAP, a yield model for     a detailed analysis and modeling framework to predict and
+                                                                                                                                      wafer-to-wafer (W2W) and die-to-wafer (D2W) hybrid bonding             optimize bonding yield. The main contributions are summarized
+                                                                                                                                      process. The model accounts for key failure mechanisms that            as follows:
+                                                                                                                                      contribute to yield loss, including overlay errors, particle defects,
+                                                                                                                                      Cu recess variations, excessive wafer surface roughness, and Cu           · To the best of our knowledge, we present the first yield
+                                                                                                                                      density. We also develop an open-source yield simulator and                  model specifically for the HB process. This model incor-
+                                                                                                                                      compare the accuracy of the near-analytical yield model with                 porates critical failure mechanisms contributing to yield
+                                                                                                                                      the simulation results. The results demonstrate that YAP achieves            loss, including overlay errors, particle defects, Cu recess
+                                                                                                                                      virtually identical accuracy while offering over 10,000x faster run-         variations, surface roughness of wafers and dies, and
+                                                                                                                                      time. YAP enables the co-optimization of packaging technologies,             excessive Cu density.
+                                                                                                                                      assembly design rules, and overall design methodologies. We used
+                                                                                                                                      YAP to examine the impact of bonding pitch, compare W2W                   · We construct a yield simulator based on the distribution
+                                                                                                                                      and D2W hybrid bonding for varying chiplet sizes, and explore                parameters of various failure mechanisms to validate the
+                                                                                                                                      the benefits of tighter process controls, such as improved particle          proposed yield model and assess its predictive accuracy.
+                                                                                                                                      defect density.
+                                                                                                                                                                                                                · We perform case studies examining various factors that
+                                                                                                                                         Index Terms--yield modeling, hybrid bonding, wafer-to-wafer               impact yield, compare the yield performance of W2W
+                                                                                                                                      (W2W), die-to-wafer (D2W), 3D integration, chiplet, roughness,               and D2W HB approaches, and demonstrate the necessary
+                                                                                                                                      pad recess, peeling stress, particle defects, overlay, warpage/bow.          process control for a high yield performance.
+
+                                                                                                                                                                I. INTRODUCTION                                 The remainder of the paper is organized as follows: Section
+                                                                                                                                                                                                             II introduces key failure mechanisms of HB processes. Sec-
+                                                                                                                                         As we approach the physical and economic limits of scaling          tion III proposes modeling methodologies for W2W HB and
+                                                                                                                                      in two-dimensional integrated circuits, Three-Dimensional Inte-        extends it to D2W HB. Section IV describes the experiment
+                                                                                                                                      grated Circuits (3D-ICs) have emerged as a promising solution          setting, compares the results from the near-analytical model
+                                                                                                                                      to sustain the momentum of Moore's Law. By stacking multiple           and the simulator, and conducts case studies on critical yield-
+                                                                                                                                      layers of devices vertically, 3D-ICs offer significant benefits        influencing factors. Finally, Section V concludes the paper and
+                                                                                                                                      such as reduced interconnect lengths, enhanced performance,            gives suggesting directions for future research.
+                                                                                                                                      lower power consumption, and higher integration density. A
+                                                                                                                                      pivotal technology that enables 3D-ICs is hybrid bonding (HB)             II. OVERVIEW OF FAILURE MECHANISMS OF HYBRID
+                                                                                                                                      which facilitates reliable fine pitch interconnections, making                                         BONDING
+                                                                                                                                      it highly suitable for high-bandwidth memory, logic-memory
+                                                                                                                                      integration, and advanced sensor applications [1]­[4]. The two            This section provides an overview of the primary failure
+                                                                                                                                      popular HB variants are Wafer-to-wafer (W2W) which allows              mechanisms in HB processes, including overlay errors, Cu
+                                                                                                                                      for a higher alignment accuracy and die-to-wafer (D2W) bond-           recess variations, and particle defects. Each mechanism con-
+                                                                                                                                      ing which allows for better leveraging of pre-tested known-            tributes to yield loss when bonding parameters are inadequately
+                                                                                                                                      good-die [1].                                                          controlled, and understanding these mechanisms is critical for
+                                                                                                                                                                                                             optimizing the process yield.
+                                                                                                                                         Accurate, predictive yield modeling for advanced packaging
+                                                                                                                                      is essential is key to identifying potential failure mechanisms        A. Overlay Errors
+                                                                                                                                      early in the technology development cycle, enabling system-
+                                                                                                                                      technology co-optimization, and guiding the development of the            Ensuring the quality of the Cu connection formed during
+                                                                                                                                      chiplet interconnect repair strategy [6]. The overall assembly         the HB process is critical for the electrical properties of the
+                                                                                                                                      yield model for advanced integration is determined by multiple         design. Misalignment of Cu pillars of the top and bottom
+                                                                                                                                      components, including chiplet yield, hybrid bonding yield, and         wafers inevitably exists due to the robot arm calibration error,
+                                                                                                                                      through-silicon via (TSV) yield. Though full system yield with         the warpage induced by thermal stress difference, etc. The
+                                                                                                                                      simplified underlying models has received a lot of attention [7]­      misalignment influence on yield loss is increasingly pronounced
+                                                                                                                                      [10], models of the yield of hybrid bonding have largely been          as we are shrinking the pad size and using the sub-micron
+                                                                                                                                      overly simplistic. [7], [8] propose system-level yield models          pitch [11]. As shown in Fig.1, the excessive misalignment will
+                                                                                                                                      specific to 3D stacked ICs, However, [7] does not extend its
+                                                                                                                                      yield model to include the bonding process, and [8] assumes the        (a) Misalignment leads to resistance in- (b) Contact area calculation
+                                                                                                                                      bonding yield as a constant, which is also done by [10] when
+                                                                                                                                      building an assembly yield for a chiplet system. None of these         crease and dielectric breakdown.  given the misalignment.
+                                                                                                                                      studies considers the complex physical failure mechanisms
+                                                                                                                                      or derives a concrete yield model for the HB process. Such             Fig. 1: Failure mechanism of Overlay errors.
+                                                                                                                                      modeling becomes even more important as the industry strives
+                                                                                                                                      to rapidly scale down the bonding pitches in the next decade.
+
+                                                                                                                                      Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+(a) Excessive Cu recess causes Cu to open or reduce Cu contact area.   (a) The presence of particle will form a main void and a void tail due
+                                                                       to the bond wave propagation.
+
+(b) Insufficient Cu recess may cause dielectric delamination, depend-  (b) Void formation can fail the dielectric and Cu bonding. A particle
+ing on the dielectric bonding strength, Cu density, and annealing      of a few microns can form a main void of hundreds of microns [38].
+temperature, etc.
+                                                                                 Fig. 3: Failure mechanism of particle defects.
+       Fig. 2: Failure mechanism of Cu recess variations.
+                                                                       with the simulation results across 300 parameter sets. The
+decrease the contact area (Sovl) of the Cu interface, hence in-        workflow of simulation and model validation is illustrated in
+creasing the contact resistance and triggering electromigration-       Fig. 4. The detailed experiment setting will be discussed in
+related defects [12]. Also, the probability of dielectric break-       Section. IV.
+down will increase due to the reduced critical distance (CD),
+causing thinner insulating film between the upper and lower            A. Overlay Model
+pads of adjacent pillars [2]. It is defined as the pitch being p,
+the pad being circular, and the top and bottom pad diameters           Our proposed overlay model estimates the yield loss caused
+being d1 = 2r1 and d2 = 2r2. The critical distance between
+two perfectly aligned Cu pillars is defined as CD = p-d2, i.e.,        by the Cu pad misalignment. We assume the bonding mis-
+the distance between two neighboring pads. In some designs,
+the top pad size is set smaller than bottom pad size to increase       alignment is normally distributed with zero mean and process-
+the misalignment tolerance [28]. Overlay errors are typically
+classified as pad-level random errors and systematic errors.           specific 1 [13]. Then, the possibility of survival (POS) of one
+                                                                       single pad can be calculated as
+B. Cu Recess Variations
+                                                                                                 1         -   u2
+   The CMP process will result in Cu recess effects, forming               P OSovl,pad =                      212
+a concave shape on the Cu pad surface. As presented in Fig.                                              e         du                                (1)
+2a, excessive Cu recess will decrease the bonding quality or                             1 2 -
+even incur Cu connection failure after post-bond annealing
+(PBA) [17], [18]. Meanwhile, Cu protrusion and insufficient Cu         where u denotes the random overlay error of the top and bottom
+recess can degrade the yield. Excessive wafer surface roughness
+decreases the effective contact area of the dielectric during          pad, and  represents the maximum allowed overlay error to
+low-temperature bonding, which lowers the density of covalent
+bonds after PBA, thereby weakening the bonding strength and            ensure the pad's survival.  should be determined by the contact
+energy per unit area at the dielectric interface [18]­[20]. In
+fine-pitch designs, high Cu density and insufficient Cu recess         area constraints and the critical distance constraints. We assume
+can incur an undesirable peak peeling stress at the dielectric
+interface at the end of the annealing dwell stage [21]­[24]. As        s as the systematic overlay error of a Cu connection caused
+can be seen in Fig. 2b, if the dielectric interface bonding is
+unable to withstand the peeling stress, dielectric delamination        by three distortion components: translation, rotation, and mag-
+or cracking can occur, leading to bonding failure [25]­[27]. In
+summary, to achieve a high yield, especially for a chiplet with a      nification [14]. The translation and rotation mainly originate
+large number of Cu pads, a well-controlled Cu recess variation
+of the top and bottom pad within a range determined by Cu              from the equipment precision limitations, and the magnification
+pattern density, surface roughness, etc. is necessary.
+                                                                       mainly comes from the wafer warpage/bow induced by thermal
+C. Particle Defects
+                                                                       expansion mismatch of multiple materials [21]. We define the
+   The HB process requires high-standard cleanliness to pre-
+vent the presence of physical particles, which will incur void         translation errors as Tx, Ty in x, y directions, respectively, and
+formation at the bonding interface [1], [38]. In addition to           the rotation error as . Typically, the warpage of bonded wafers
+physical particles, gas condensation during the bonding process
+can incur edge voids in the wafer bevel region. The outer edge         can range from a few micrometers to over 100 µm, which can
+region is usually removed by a sawing process and silicon
+dies or chips located inward from the wafer edge will not be           be optimized to 10 µm through run-out compensation [16].
+influenced, therefore, there will be no yield impact [37]. In the
+defect model, the emphasis is on the yield loss resulting from         Let B represent the warpage of the bonded wafer. It can be
+the particle-induced void formation. As presented in Fig. 3, in
+the W2W HB process, due to the bond wave propagation, the              observed that the magnification factor E is linearly correlated
+presence of a particle at the bonding interface will result in a
+main void with a trailing void tail extending radially [38].           to B [15], [16]. We can build a linear model to characterize
+
+                      III. YAP YIELD MODEL                             the magnification factor E as
+
+   In this section, we introduce our yield modeling methodology                          E = kmag · B                                                (2)
+for W2W HB and then extend the model to D2W HB. To
+validate our derived model, we compare the modeling results            where kmag is the fitting parameter of the model. The parameter
+                                                                       is related to the Cu pad depth, Cu area density, bonding process
+                                                                       temperature, etc [21]. We model the systematic misalignment
+                                                                       x, y in x, y directions respectively by
+
+                                                                             x(x, y) = Tx -  · y + E · x,                                            (3)
+
+                                                                             y(x, y) = Ty +  · x + E · y.
+
+                                                                       The systematic overlay error s at the location (x, y) is by
+
+                                                                         s(x, y) = [x(x, y)]2 + [y(x, y)]2                                           (4)
+
+                                                                       As Fig. 1b shows, the contact area of two Cu pads is by
+
+                                                                       r12,                                            s < r2 - r1
+
+                                                                       
+
+                                                                       Sovl = 1r12 + 2r22 - sr1 sin 1, r2 - r1  s  r1 + r2.
+
+                                                                       0,                                              s > r1 + r2
+
+                                                                                                                                                     (5)
+
+                                                                       If we assume that, to ensure the pad survival, the contact
+
+                                                                       area should exceed kca times the surface area of the top pad
+                                                                       interface, i.e., Sovl > kcar12, and the critical distance CD
+                                                                       should be greater than kcd times the ideal critical distance, i.e.,
+
+Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+Fig. 4: Simulation workflow and the validation of modeling yield on various input parameter sets.
+
+CD > kcd(p - d2), then  can be given by                                  b) Calculation of +: The critical condition for delami-
+                                                                   nation is that the sum of heights equals +. It is noticed that
+ = min 1r12 + 2r22 - kcar12 ,                                      surface roughness will decrease the effective contact area of two
+                       r1 sin 1
+                                                       (6)         surfaces. We use the asperity-based roughness model proposed
+                       1         1
+(1 - kcd)p - 2 d1 + kcd - 2 d2                                     by [19], [33] to calculate the normalized effective contact area
+                                                                   Ab(z, Rz, Ed, w) given roughness and bonding parameters
+Given above, the POS of a die with N pads is given by              such as the standard deviation of asperity height z, asperity
+                                                                   cap radius Rz, Young's modulus of contact surface material Ed,
+                    1            e du -si-     u2                  and fully contact bonding energy w 1. The maximum tolerable
+P OSovl,die  =          min                   212      (7)         peeling stress tol to avoid delamination can be given by
+                1 2
+                       i[1,N ]   --si
+
+where si denotes the systematic overlay residue of the i-th pad    tol = Ab(z, Rz, Ed, w) ×                            2Edw                          (9)
+in one die. Assuming one wafer has M dies, the overlay die                                                               td
+
+yield of the wafer can be calculated as
+
+                       1M                                          where td denotes the thickness of the surface material [35]. As
+
+Yovl,W 2W = M                  P OSovl,die,j           (8)         the ambient temperature changes during the PBA, the thermal
+
+                          j=1                                      expansion mismatch between metal and dielectric will incur
+
+   We vary input parameters for both the model and simula-         various stresses on the bonding interface [27]. Among different
+tor, including factors such as translation error, rotation error,
+warpage, die size, and others. The 300 comparison results          interfaces, dielectric-dielectric (e.g. SiO2-SiO2) interface is
+(purple points) and the mean squared error (MSE) in Fig. 5a
+demonstrate that our model aligns closely with the simulation      more inclined to delaminate due to relatively lower bonding
+data, confirming its reliability and accuracy.
+                                                                   strength and higher peeling stress at the end of the annealing
+
+                                                                   dwell stage [22], [25]. For simplification, we use a fitting model
+
+                                                                   to evaluate dielectric interface peeling stress dependence by
+
+                                                                   peel = kpeel · DCu · (h - h0)                                                     (10)
+
+B. Cu Recess Model                                                 where DCu denotes the Cu pattern density, h0, kpeel are fitting
+                                                                   parameters, and kpeel is related to the annealing temperature,
+   We can assume the pad height after the CMP process is           pad shape, pad arrangement, pad structure, etc. [22], [23], [27].
+normally distributed according to [28], [30]. Let the dielectric
+surface be zero reference. The height will be negative for the     To prevent delamination, one should have
+recessed pad and positive for the protruded pad. It is evident
+that the sum of the top and bottom pad heights also follows        tol  peel  h  hpeel                                                               (11)
+a normal distribution. Let h represent the sum of pad heights
+of two corresponding pads. The mean value of this distribution     Additionally, given the Cu protrusion after CMP will incur
+is denoted by µh, and the variance by h2. It is noticed that       delamination, the upper bound of the sum of heights is by
+h should be clamped within a range of (-, +) so that the
+Cu bonding failure and dielectric delamination can be avoided.     + = min{0, hpeel}                                                                 (12)
+Below the calculation of - and + is discussed.
+                                                                   To summarize, the POS of this pad during PBA is given by
+      a) Calculation of -: Based on the observation in [30]­
+[32], the height difference due to Cu expansion during anneal-                                                         )2
+ing is linearly correlated to the annealing temperature. The                          e dh +
+lower bound - of the total Cu heights required to form a           P OScr,pad =   1      -   (h-µh                                                   (13)
+qualified Cu bonding area is determined by the sum of Cu                         2h2             2h2
+expansion after PBA so that the gap between two pads caused
+by the recess is adequately filled with Cu.                                           -
+
+                                                                   The die yield, as the POS of a die with N pads with respect
+
+                                                                   to the factor of the Cu recess variations is given by
+
+                                                                   Ycr,W 2W = P OScr,die = P OScNr,pad                                               (14)
+
+                                                                   We vary input parameters of Cu recess, pitch, roughness, etc.
+
+                                                                   to validate the Cu recess model. Fig. 5b presents the correlation
+
+                                                                   of the proposed Cu recess model with the simulation data.
+
+                                                                   C. Defect Model
+
+                                                                      The relationship between a particle's properties and void
+                                                                   size is complex. Due to the significant discrepancy between
+                                                                   theoretical and experimental results, it is more practical to
+                                                                   develop a fitting model to predict the void size given the particle
+                                                                   information. Additionally, for a particle of a specific size and
+                                                                   material, it is shown in [3], [38], that the main void size and
+                                                                   the void tail length are linearly correlated with the particle's
+                                                                   location and the square root of particle thickness. We model
+
+(a) Overlay model.               (b) Cu recess model.
+
+Fig. 5: Correlation results of the overlay model and the Cu 1To model the interaction of two rough surfaces, the surface roughness z
+
+recess model with the simulation data for W2W HB.                  and Young's modulus Ed need to be normalized [34].
+
+Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+                                                                              Fig. 7: Critical area calculation. Die size: a×b. Void tail length:
+                                                                              l. Void tail direction: .
+
+Fig. 6: Visualization of the void formation simulation.
+
+the size rmv of the main void that is located with the distance
+L (0  L < R) from the wafer center by
+
+                   rmv = (krL + kr0 )t1/2                            (15)     (a) Void tail length distribution.                             (b) Defect model.
+
+where t is the particle thickness. Similarly, the void tail length            Fig. 8: Correlation results of the void tail length distribution
+                                                                              and the defect model with the simulation data for W2W HB.
+l can be modeled by
+
+                          l = klLt1/2                                (16)     results.
+
+where kr, kr0 , kl are fitting parameters. Fig. 6 visualizes the              D. Overall Bonding Yield Model
+simulation of the void formation, which is similar to the
+
+scanning acoustic microscopy images of voids in [38]. Since                      To develop the overall bonding yield model for W2W hybrid
+                                                                              bonding, we assume the overlay error, Cu recess variations, and
+the average void tail length on the wafer can achieve a few                   particle defects have independent impacts on the die yield. By
+                                                                              combining the Eq. 8, 14, 21, the assembly yield is
+millimeters, more than 10 times the scale of the main void
+
+size (a few hundred µm in W2W HB, the defect shape can
+
+be reasonably simplified as a line as illustrated in Fig. 7.                             YW 2W = Yovl,W 2W · Ycr,W 2W · Ydf,W 2W                                (22)
+
+Additionally, a die is considered to have failed if the void tail
+
+overlaps the pad array area, as the void size is typically much               E. D2W Hybrid Bonding Yield Models
+
+larger than the pitch ( 10 µm).
+
+We assume the thickness distribution of particle defects as                      Here we extend the yield model for D2W HB. We assume
+                                                                              that the Cu expansion mechanism during PBA in W2W HB
+D(t). A typical form of D(t) can be [39]                                      remains consistent in the D2W HB case. However, the yield
+                                                                              terms regarding the overlay error and particle defects should be
+          D(t)  =  Dt  ·  (z  -  1) ·  tz0-1  ,        t > t0        (17)     revised to account for the differences in bonding approaches.
+                                 tz
+                                                                                 1) Overlay Model: In D2W hybrid bonding, the systematic
+where t0 is the smallest particle thickness, and Dt is the total              overlay error independently happens die-to-die. Given that the
+number of particles of all thicknesses per unit area on the                   die is much smaller than the wafer, the same marker alignment
+                                                                              errors at the die edge result in a larger rotation error  and
+die. The curve shaping parameter z is typically assumed to                    magnification error E than that on average in W2W HB. The
+                                                                              overlay yield can be represented by the POS of the die as
+be between 2 and 3 [40], [41]. By Eq. 16, 17, the distribution
+
+of void tail length is given by
+
+            2Dt(z - 1)l   ,      l  klRt01/2
+              zkl2R2t0
+fl(l)  =                                                             (18)                                1                            e du -si-   u2
+            2Dt(z  - 1)(kl2R2t0)z-1                                                                                                              212
+                     zl2z-1            ,            l   >  klRt10/2           Yovl,D2W           =           min                                                (23)
+                                                                                                     1 2
+                                                                                                            i[1,N ]                --si
+          
+          
+
+where R denotes the radius of the wafer. The comparison                       2) Defect Model: Since the die scale is much smaller than
+
+of the derived fl(l) and the simulating distribution is shown                 the wafer's, the formation of the void tail is unlikely to occur.
+in Fig. 8a, confirming the formula's accuracy. The critical
+                                                                              Therefore, we only consider the main void-induced failure in
+
+area calculation method is presented in Fig. 7. The average                   the D2W defect model. Combining Eq. 15, 17, the PDF of the
+
+critical area regarding the line defect with a length l across all            main void size rmv can be given by
+
+directions, i.e., 0 <  < 2, can be given by                                                   Dt(z   -  1)tz0-1             2rmv               2kr20z
+                                                                                                                             zt0z        z(2z - 1)rm 2zv-1
+                                    2                                                                                ×   [         +
+                                                                                                    kr2R2
+
+                   A(l) = ab + (a + b)l                              (19)                   
+                                                                                            
+                                                                                            
+
+                                                                                            
+
+Hence, the average number  of particle-induced void tail                                      -      2kr0            ],        kr0 t10/2 < r < (krR + kr0 )t01/2,
+                                                                                            
+defects that will fail a die can be given by                                                     (z  -  1  )t0z-  1
+                                                                                                        2         2
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+
+                                                                                            
+
+=         A(l)fl(l)dl  =  Dtab   +     8Dt(z     -  1)  ·  (a  +  b)klRt01/2                  2Dt(z  -   1)tz0-1 (kr R         +   kr0 )2z-2  -
+   0                                   3(2z      -  3)                                                        rm 2zv-1
+                                                                              fr (rmv )  =  
+                                                                                              2Dt(z - 1)2t0z-1           × [ (krR + kr0 )2z           kr20z
+                                                                     (20)                        kr2 R2 rm 2zv-1                         z       -
+                                                                                            
+Using the Poisson yield model [43], the yield with respect to
+                                                                                            
+the particle-induced void formation is given by                                             
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+
+                                                                                              -  2k2 (kr R  + kr0 )2z-1            -  2kr20z  +
+                                                                                            
+                   Ydf,W 2W = exp(-)                                 (21)                                         z  -      1
+                                                                                                                            2
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+
+   We vary input parameters of particle defect density, die size,                             kr20 (krR  + kr0 )2z-2           -  kr20z  ],   r  (krR + kr0 )t01/2.
+wafer size, etc. to validate the defect model. Fig. 8b demon-                                              z-1
+strates the correlation of the defect yield with the simulation                             
+                                                                                            
+                                                                                            
+                                                                                            
+
+                                                                                                                                                                (24)
+
+   Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+(a) Main void size distribution.  (b) Overlay model.                 (a) Yield of W2W HB.             (b) Yield of D2W HB.
+
+                                                                     Fig. 10: Correlation of bonding yield with the simulation.
+
+(c) Cu recess model.              (d) Defect model.                  for W2W (D2W) HB, taking 12.2 hours (0.5 hours) on a
+
+Fig. 9: Correlation results of main void size distribution and       single CPU (AMD Ryzen 9 8945HS). In contrast, the yield
+
+the yield model with the simulation data for D2W HB.                 model achieves virtually identical accuracy shown in Fig. 10
+                                                                     in 0.5 s (0.07 s) for W2W HB, offering over 10,000x runtime
+where R is the effective radius of the die, i.e., R = (ab/)1/2,      improvement and enabling its usage in yield optimization and
+aiming to remain the average number of particles within the die
+area. The good alignment between fr(rmv) and the simulated           pathfinding optimization loops.
+distribution is shown in Fig. 9a. To simplify the critical area
+calculation, we assume the defect and pad shape are square.             Below we discuss a few example case studies using the
+The side lengths of voids and top pads are defined as 2rv, 2r1,
+respectively. The critical area of the main void is given by         YAP model indicating its strengths in system-technology co-
+                                                                     optimization. We vary particle defect density (0.01 cm-2, 0.1
+                                                                     cm-2), pitch (1 µm, 6 µm), and chiplet sizes (10 mm2, 50
+                                                                     mm2, 100 mm2) in the experiment. The yield breakdown and
+
+                                                                     the overall bonding yield are reported in Fig. 11 (W2W setup)
+
+                                                                     and Fig. 12 (D2W setup).
+
+A(rv) =  4N (rv + r1)2,                         2(rv + r1)  p        A. Impact of Particle Defect Density
+         [a + 2(rv + r1)] · [b + 2(rv + r1)] ,  2(rv + r1) > p
+                                                                        The HB process demands strict elimination of particles at
+                                                      (25)           the bonding interface. Fig. 11, 12 show that for the relaxed
+                                                                     bonding pitch (6µm), bonding yield is completely defect-
+By Eq. 24, 25, the average number  of particle-induced main          limited. Furthermore, W2W HB is more sensitive to particle
+                                                                     contamination due to void tail formation during bond wave
+void defects that will fail a die is given by                        propagation, resulting in a larger critical area per die. As
+                                                                     can be seen from the results, a 10X improvement in defect
+                                                                     density (e.g., by following a more stringent cleanroom standard)
+                                                                     ensures near-perfect bonding yield for both W2W and D2W for
+         =            A(rmv )fr (rmv )drmv            (26)           all chiplet sizes.
+
+            0
+
+Using the Poisson yield model [43], the yield with respect to        TABLE I: BASELINE PARAMETERS IN YIELD MODELING AND
+
+the particle-induced void formation for D2W HB is given by           SIMULATION
+
+            Ydf,D2W = exp(-)                          (27)
+
+   3) Overall Bonding Yield Model: Similarly, we assume the          Parameter                                      Value
+overlay error, Cu recess variations, and particle defects influ-
+ence the die yield independently for D2W HB. Fig. 9b, 9c, 9d         Pad pitch [27]                                 6 µm
+show the correlation results of three yield terms, respectively.
+By combining Eq. 14, 23, 27, the bonding yield is by                 Bottom, Top pad size [27]                      3 µm, 2 µm
+
+                                                                     Die size [47]                                  10 mm × 10 mm
+
+                                                                     Wafer size                                     300 mm
+
+         YD2W = Yovl,D2W · Ycr,D2W · Ydf,D2W          (28)           Random misalignment [46]                       5 nm (10 nm)*
+
+                                                                     System x,y translation [46]                    5 nm (10 nm)*
+
+                                                                     System rotation [46]                           0.1 µrad (0.05 µrad)*
+
+                   IV. EXPERIMENTAL RESULTS                          Bonded wafer warpage [16]                      10 µm (3 µm)*
+
+   To validate the derived model, we developed a simulator           System magnification [16]                      0.9 ppm (0.07 ppm)*
+focusing on Cu-SiO2 hybrid bonding process. Table I presents         Particle defect density [47]                          0.1 cm-2
+the baseline model parameters, with additional details available
+in our code. These are the parameter values used in our              Minimum particle thickness [38]                1 µm
+experiments unless otherwise stated.
+                                                                     Shaping factor (z) in Eq. 17 [40], [41]        3
+   Fig. 4 outlines the simulation workflow. Overlay error, Cu
+recess, and particle data are sampled from their respective          Bottom/Pad recess [22], [28]                   10.0 nm (1.0 nm)*
+distributions. Particles are uniformly distributed across the
+wafer or die, and the void tails are generated based on the fitting           Roughness (z) [20], [45]                1 nm
+model from [38], simulating bond wave propagation (Fig. 6).          Adhesion energy (SiO2-SiO2) [18], [25]         1.2 J/m2
+A die survives only if Cu pillar misalignment is within the safe
+range (Overlay Check), no void overlaps the Cu contact (Defect          Young's modulus (SiO2) [22], [27]           73 GPa
+Check), and no dielectric delamination or Cu connection failure                Dielectric thickness [44]            1.5 µm
+occurs (Cu Recess Check). The simulation results are closer
+to the actual conditions with less approximation compared to          contact area constraint kca in Eq. 6 [11]              0.75
+the model. However, to obtain an accurate yield prediction,          critical distance constraint kcd in Eq. 6 [2]
+simulation requires 1000 wafer samples (20,000 die samples)                                                                  0.75
+                                                                                   kmag in Eq. 2 [16]                     0.09 m-1
+                                                                                   kpeel in Eq. 10 [22]             6.55× 1015 N·m-3
+
+                                                                                    h0 in Eq. 10 [22]                       75 nm
+                                                                                    kr in Eq. 15 [38]               1.8×10-4 µm-1/2
+                                                                                    kr0 in Eq. 15 [38]
+                                                                                     kl in Eq. 16 [38]                   230 µm1/2
+                                                                                                                    6.2×10-2 µm-1/2
+
+                                                                     Note: Distribution parameters with * are shown in Mean (Std.).
+
+Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+Fig. 11: W2W case studies for various configurations.
+
+Fig. 12: D2W case studies for various configurations.
+
+B. Impact of Bonding Pitch                                          losses. Interestingly, even though YD2W decreases as the chiplet
+                                                                    size increases, Ysys remains higher.2
+   In this experiment, the bottom pad size is set to half of the
+corresponding pitch. As shown in Fig. 11, 12, reducing the pitch                               V. CONCLUSION
+from 6 µm to 1 µm leads to a noticeable yield decrease across          This work presents YAP: a comprehensive yield modeling
+various chiplet sizes, with the effect being more pronounced        framework for W2W and D2W hybrid bonding in advanced
+in D2W HB. In D2W HB, the primary yield loss stems from             packaging. YAP models overlay errors, particle-induced void
+increasing overlay errors, as smaller pitches heighten sensitivity  defects, and Cu recess variations and is validated against a
+to Cu pillar misalignment. For overlay errors, the error  and       physics-inspired yield simulator3. The proposed YAP yield
+E resulting from the marker alignment errors scale inversely        model accurately predicts bonding yield across various chiplet
+with the maximum edge distance from the center, which is            sizes, pitches, and pad configurations and achieves a 10,000-
+smaller for a chiplet in D2W HB than for a full wafer. For          fold speed improvement over direct simulations while main-
+W2W HB, chiplets closer to the wafer center are more likely         taining negligibly small mean square error. YAP enables fast
+to survive, therefore achieving a higher Yovl,W 2W . Meanwhile,     system-technology co-optimization. Case studies using it high-
+reducing the pitch significantly increases the number of pads,      light key differences between W2W and D2W HB, offering
+amplifying the yield's sensitivity to Cu recess variations. For     insights into yield-limiting failure mechanisms motivating fu-
+W2W HB increased yield loss is mainly driven by a decrease          ture technology development and system architecture choices.
+in Ycr when bonding pitch is decreased. Defect yield, remains          Our future work directions include incorporating YAP into a
+largely unaffected, as void size significantly exceeds the pitch,   comprehensive system assembly yield model; extending YAP
+leaving the critical area unchanged.                                to model other forms of fine-pitch bonding such as thermal-
+                                                                    compression bonding; evaluating some of the approximations
+   Another observation is that W2W bonding fares far better         made in YAP in the context of ultra-fine pitch bonding pro-
+than D2W bonding at finer pitches and the difference is even        cesses; and developing fault tolerance and yield improvement
+more pronounced at low defect densities. This primarily stems       techniques leveraging YAP.
+from the ease of high-accuracy alignment for the W2W case.
+                                                                                            ACKNOWLEDGEMENT
+C. Analyzing Yield Limiters with Varying Chiplet Size                  The authors thank Alexander Graening and Krutikesh Sahoo
+                                                                    at UCLA and Nicolas Pantano at IMEC for their inputs during
+   The bonding yield drops with increasing chiplet size for both    the early stages of the work. This work was supported in
+D2W and W2W bonding, primarily driven by worsened copper            part by CHIMES, one of the seven centers in JUMP 2.0, a
+recess yield (due to more number of pads per die) and defect        Semiconductor Research Corporation (SRC) program.
+yield.
+                                                                       2Note that this does not account for any worsened yield of a larger chiplet.
+   D2W HB can be employed in 2.5D integration to assemble           A more complete system yield model can be found, for example, in [10] albeit
+large chiplet systems. Therefore, just looking at a single chiplet  with an oversimplified bonding yield model.
+yield can be misleading. Though our focus is not full system
+assembly yield modeling, we add a system yield (Ysys in                3The code of the yield model and simulator is available open-source at
+Fig. 12) calculated simply as YD#2cWhiplets, in absence of any      https://github.com/nanocad-lab/YAP.
+redundancy, for a nominal system size of 1000 mm2. This
+approach reflects the cumulative probability of all chiplets
+bonding successfully in the system. Increasing the chiplet size,
+which reduces the number of chiplets required for system
+assembly, helps mitigate the compounding effect of YD2W
+
+Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+                           REFERENCES                                           [24] Beilliard, Y., Estevez, R., Parry, G., McGarry, P., Di Cioccio, L. &
+                                                                                      Coudrain, P. Thermomechanical finite element modeling of Cu­SiO2
+ [1] Elsherbini, A., Jun, K., Vreeland, R., Brezinski, W., Niazi, H., Shi, Y.,        direct hybrid bonding with a dishing effect on Cu surfaces. Interna-
+      Yu, Q., Qian, Z., Xu, J., Liff, S. & Others Enabling hybrid bonding             tional Journal Of Solids And Structures. 117 pp. 208-220 (2017)
+      on Intel process. 2021 IEEE International Electron Devices Meeting
+      (IEDM). pp. 34-3 (2021)                                                   [25] Fujii, N., Furuse, S., Yoshioka, H., Ogawa, N., Yamada, T., Hirano,
+                                                                                      T., Saito, S., Hagimoto, Y. & Iwamoto, H. Bonding Strength of Cu-Cu
+ [2] Ikegami, Y., Onodera, T., Chiyozono, M., Sakamoto, A., Shimizu,                  Hybrid Bonding for 3D Integration Process. ECS Transactions. 112, 3
+      K., Kagawa, Y. & Iwamoto, H. Study of Ultra-Fine 0.4 µm Pitch                   (2023)
+      Wafer-to-Wafer Hybrid Bonding and Impact of Bonding Misalignment.
+      2024 IEEE 74th Electronic Components And Technology Conference            [26] Le, X. & Choa, S. Assessment of the Risk of Crack Formation at a
+      (ECTC). pp. 299-304 (2024)                                                      Hybrid Bonding Interface Using Numerical Analysis. Micromachines.
+                                                                                      15, 1332 (2024)
+ [3] Lau, J. Recent Advances and Trends in Cu­Cu Hybrid Bonding.
+      IEEE Transactions On Components, Packaging And Manufacturing              [27] Zhao, G., Zeng, Y. & Zhao, Y. Simulation and Experimental Analysis
+      Technology. 13, 399-425 (2023)                                                  of Thermomechanical Stress Around Interconnects for W2W Hybrid
+                                                                                      Bonding. 2024 IEEE 10th ESTC. pp. 1-6 (2024)
+ [4] Lee, S., Jee, Y., Park, S., Lee, S., Hwang, B., Jo, G., Lee, C.,
+      Park, J., Jang, A., Jung, H. & Others A study on memory stack             [28] Kim, S., Fodor, F., Heylen, N., Iacovo, S., De Vos, J., Miller, A.,
+      process by hybrid copper bonding (HCB) technology. 2022 IEEE 72nd               Beyer, G. & Beyne, E. Novel Cu/SiCN surface topography control for
+      Electronic Components And Technology Conference (ECTC). pp. 1085-               1 µm pitch hybrid wafer-to-wafer bonding. 2020 IEEE 70th Electronic
+      1089 (2022)                                                                     Components And Technology Conference (ECTC). pp. 216-222 (2020)
+
+ [5] Lujan, A. Cost and Yield Analysis of Die-to-Wafer Hybrid Bonding.          [29] Beyne, E., Kim, S., Peng, L., Heylen, N., De Messemaeker, J.,
+      2022 International Conference On Electronics Packaging (ICEP). pp.              Okudur, O., Phommahaxay, A., Kim, T., Stucchi, M., Velenis, D. &
+      129-130 (2022)                                                                  Others Scalable, sub 2µm pitch, Cu/SiCN to Cu/SiCN hybrid wafer-to-
+                                                                                      wafer bonding technology. 2017 IEEE International Electron Devices
+ [6] Marinissen, E., Pancholi, V., Chuang, P. & Keim, M. IEEE Std P3405:              Meeting (IEDM). pp. 32-4 (2017)
+      New Standard-under-Development for Chiplet Interconnect Test and
+      Repair. 2024 IEEE 42nd VLSI Test Symposium (VTS). pp. 1-11 (2024)         [30] De Messemaeker, J., Witters, L., Zhang, B., Tsau, Y., Fodor, F., De Vos,
+                                                                                      J., Beyer, G., Croes, K. & Beyne, E. New Cu "Bulge-Out" Mechanism
+ [7] Singh, E. Analytical modeling of 3D stacked IC yield from wafer to               Supporting SubMicron Scaling of Hybrid Wafer-to-Wafer Bonding.
+      wafer stacking with radial defect clustering. 2014 27th International           2023 IEEE 73rd Electronic Components And Technology Conference
+      Conference On VLSI Design. pp. 26-31 (2014)                                     (ECTC). pp. 109-113 (2023)
+
+ [8] Xu, Q., Jiang, L., Li, H. & Eklow, B. Yield enhancement for 3D-            [31] Lin, H., Tran, D., Chiu, W., Chang, H. & Chen, C. In-situ measurement
+      stacked ICs: Recent advances and challenges. 17th Asia And South                of thermal expansion in Cu/SiO2 hybrid structures using atomic force
+      Pacific Design Automation Conference. pp. 731-737 (2012)                        microscopy at elevated temperatures. Applied Surface Science. 662 pp.
+                                                                                      160103 (2024)
+ [9] Campbell, D. Yield modeling of 3D integrated wafer scale assemblies.
+      2010 Proceedings 60th Electronic Components And Technology Con-           [32] Lin, H., Chiu, W., Chang, H. & Chen, C. Observation of Thermal
+      ference (ECTC). pp. 1935-1938 (2010)                                            Expansion Behavior of Nanotwinned-Cu/SiO2 & Regular-Cu/SiO2
+                                                                                      Hybrid Structure via In-Situ Heating AFM. 2024 IEEE 74th Electronic
+[10] Graening, A., Pal, S. & Gupta, P. Chiplets: How small is too small?.             Components And Technology Conference (ECTC). pp. 816-820 (2024)
+      2023 60th ACM/IEEE Design Automation Conference (DAC). pp. 1-6
+      (2023)                                                                    [33] Maugis, D. On the contact and adhesion of rough surfaces. Journal Of
+                                                                                      Adhesion Science And Technology. 10, 161-175 (1996)
+[11] Zhang, B., Chew, S., Stucchi, M., Dewilde, S., Iacovo, S., Witters,
+      L., Webers, T., Van Sever, K., De Vos, J., Miller, A., Beyer, G. &        [34] Rieutord, F., Moriceau, H., Beneyton, R., Capello, L., Morales, C. &
+      Beyne, E. Scaling Cu/SiCN Wafer-to-Wafer Hybrid Bonding down to                 Charvet, A. Rough surface adhesion mechanisms for wafer bonding.
+      400 nm interconnect pitch. 2024 IEEE 74th Electronic Components                 ECS Transactions. 3, 205 (2006)
+      And Technology Conference (ECTC). pp. 312-318 (2024)
+                                                                                [35] Hutchinson, J. & Suo, Z. Mixed mode cracking in layered materials.
+[12] Moreau, S., Bouchu, D., Jourdon, J., Ayoub, B., Lhostis, S., Fre´mont,           Advances In Applied Mechanics. 29 pp. 143-145 (1991)
+      H. & Lamontagne, P. Recent Advances on Electromigration in Cu/SiO2
+      to Cu/SiO2 Hybrid Bonds for 3D Integrated Circuits. 2023 IEEE             [36] Nagano, F., Inoue, F., Phommahaxay, A., Peng, L., Chancerel, F., Naser,
+      International Reliability Physics Symposium (IRPS). pp. 1-7 (2023)              H., Beyer, G., Uedono, A., Beyne, E., De Gendt, S. & Others Origin
+                                                                                      of Voids at the SiO2/SiO2 and SiCN/SiCN Bonding Interface Using
+[13] Ghaida, R., Gupta, M. & Gupta, P. Framework for exploring the                    Positron Annihilation Spectroscopy and Electron Spin Resonance. Ecs
+      interaction between design rules and overlay control. Journal Of Mi-            Journal Of Solid State Science And Technology. 12 (2023)
+      cro/Nanolithography, MEMS, And MOEMS. 12, 033014-033014 (2013)
+                                                                                [37] Kim, Y., Nguyen, T. & Choa, S. Enhancement of the bond strength
+[14] Armitage Jr, J. & Kirk, J. Analysis of overlay distortion patterns.              and reduction of wafer edge voids in hybrid bonding. Micromachines.
+      Integrated Circuit Metrology, Inspection, And Process Control II. 921           13, 537 (2022)
+      pp. 207-223 (1988)
+                                                                                [38] Nagano, F., Iacovo, S., Phommahaxay, A., Inoue, F., Chancerel, F.,
+[15] Okudur, O., Iacovo, S., Kang, S., Gonzalez, M. & Beyne, E. Simula-               Naser, H., Beyer, G., Beyne, E. & Gendt, S. Void formation mechanism
+      tions of Wafer-to-Wafer Bonding Dynamics and Deformation Mecha-                 related to particles during wafer-to-wafer direct bonding. ECS Journal
+      nisms. 2024 IEEE 10th ESTC. pp. 1-5 (2024)                                      Of Solid State Science And Technology. 11, 063012 (2022)
+
+[16] Kang, S., Iacovo, S., D'have´, K., Van Huylenbroeck, S., Okudur,           [39] Glang, R. Defect size distribution in VLSI chips. IEEE Transactions
+      O., Alexeev, A., Plach, T., Probst, G., Ding, T., Wimplinger, M. &              On Semiconductor Manufacturing. 4, 265-269 (1991)
+      Others Investigation of Distortion in Wafer-to-wafer Bonding with
+      Highly Bowed Wafers. 2024 IEEE 74th Electronic Components And             [40] Stapper, C. Modeling of defects in integrated circuit photolithographic
+      Technology Conference (ECTC). pp. 386-393 (2024)                                patterns. IBM Journal Of Research And Development. 28, 461-475
+                                                                                      (1984)
+[17] Ren, H. Process Development and Process Window Investigation of
+      Copper-Silicon Dioxide Die-to-Wafer (D2W) Hybrid Bonding. (Uni-           [41] Bruls, E. & Others Characterization of defects in integrated circuits:
+      versity of California, Los Angeles, 2021)                                       resources, models and applications. (1992)
+
+[18] Chidambaram, V., Leong, Y. & Ren, Q. Wafer Level Fine-Pitch Hybrid         [42] Lu, T., Hsu, K., Hsu, C., Hsu, C. & Wu, Y. Effect of Cu Film Thickness
+      Bonding: Challenges and Remedies. 2020 IEEE 22nd Electronics                    on Cu Bonding Quality and Bonding Mechanism. Materials. 17, 2150
+      Packaging Technology Conference (EPTC). pp. 459-463 (2020)                      (2024)
+
+[19] Gui, C., Elwenspoek, M., Tas, N. & Gardeniers, J. The effect of surface    [43] Koren, I. & Koren, Z. Defect tolerance in VLSI circuits: techniques
+      roughness on direct wafer bonding. Journal Of Applied Physics. 85,              and yield analysis. Proceedings Of The IEEE. 86, 1819-1838 (1998)
+      7448-7454 (1999)
+                                                                                [44] Chidambaram, V., Lianto, P., Wang, X., See, G., Wiswell, N. &
+[20] Dubey, V., Wu¨nsch, D., Gottfried, K., Fischer, T., Helke, C., Hasse, M.,        Kawano, M. Dielectric materials characterization for hybrid bonding.
+      Hanisch, A., Hofmann, L., Reuter, D., Wiemer, M. & Others Impact                2021 IEEE 71st ECTC. pp. 426-431 (2021)
+      of Dielectric Types on Surface Topography for Wafer-Level Hybrid
+      Bonding. 2024 IEEE 10th Electronics System-Integration Technology         [45] Dubey, V., Wu¨nsch, D., Gottfried, K., Wiemer, M., Fischer, T., Scher-
+      Conference (ESTC). pp. 1-5 (2024)                                               mer, S., Dittmar, N., Helke, C., Haase, M., Ghosal, S., Hanisch, A.,
+                                                                                      Bonitz, J., Luo-Hofmann, J., Hofmann, L., Lykova, M., Stoll, F., Vogel,
+[21] Ji, L., Che, F., Ji, H., Li, H. & Kawano, M. Modelling and charac-               K. & Schulz, S. Impact of Dielectric and Copper Via Design on Wafer-
+      terization on wafer to wafer hybrid bonding technology for 3D IC                to-Wafer Hybrid Bonding. 2023 IEEE 73rd ECTC. pp. 795-799 (2023)
+      packaging. 2019 IEEE 21st EPTC. pp. 87-94 (2019)
+                                                                                [46] Mitsuishi, H., Mori, H., Maeda, H., Ushijima, M., Kamashita, A.,
+[22] Ji, L., Che, F., Ji, H., Li, H. & Kawano, M. Wafer-to-wafer hybrid               Okada, M., Aramata, M., Shiomi, T., Sakamoto, S., Takahata, K. &
+      bonding development by advanced finite element modeling for 3-                  Others 50 nm overlay accuracy for wafer-to-wafer bonding by high-
+      D IC packages. IEEE Transactions On Components, Packaging And                   precision alignment technologies. 2023 IEEE 73rd Electronic Compo-
+      Manufacturing Technology. 10, 2106-2117 (2020)                                  nents And Technology Conference (ECTC). pp. 1664-1671 (2023)
+
+[23] Wang, H., Chen, H., Xiang, J. & Yang, X. Research on simulation            [47] Patel, D., Xie, M., & Koch, J. Hybrid Bonding Process Flow ­ Ad-
+      of Cu/SiO2 hybrid bonding process and interface failure mechanism               vanced Packaging Part 5. https://semianalysis.com/2024/02/09/hybrid-
+      by Finite Element Analysis. 2023 24th International Conference On               bonding-process-flow-advanced/ (2024)
+      Electronic Packaging Technology (ICEPT). pp. 1-7 (2023)
+
+Authorized licensed use limited to: Shanghai Jiaotong University. Downloaded on April 28,2026 at 05:49:59 UTC from IEEE Xplore. Restrictions apply.
+
