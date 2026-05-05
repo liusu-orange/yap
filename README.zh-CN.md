@@ -134,11 +134,11 @@ python utils/generate_criticality.py --file input/HBM_A/Center_IO/HBM_footprint_
 HBM_A 的单个变体示例：
 
 ```powershell
-python pad_risk_map_calculator.py `
-  --config configs/HBM_A/HBM_A.yaml `
-  --mode d2w_modeling `
-  --ds_name HBM_A/Center_IO `
-  --ds_dir input/HBM_A/Center_IO `
+python pad_risk_map_calculator.py
+  --config configs/HBM_A/HBM_A.yaml
+  --mode d2w_modeling
+  --ds_name HBM_A/Center_IO
+  --ds_dir input/HBM_A/Center_IO
   --verbose
 ```
 
@@ -170,25 +170,25 @@ python pad_risk_map_calculator.py `
 HBM_A 的单个变体示例：
 
 ```powershell
-python simulator_main.py `
-  --config configs/HBM_A/HBM_A.yaml `
-  --mode d2w_simulation `
-  --ds_name HBM_A/Original `
-  --ds_dir input/HBM_A/Original `
-  --criticality-profile default `
+python simulator_main.py 
+  --config configs/HBM_A/HBM_A.yaml 
+  --mode d2w_simulation 
+  --ds_name HBM_A/Original 
+  --ds_dir input/HBM_A/Original 
+  --criticality-profile default 
   --verbose
 ```
 
 保存失败热力图与 NPZ 输出：
 
 ```powershell
-python simulator_main.py `
-  --config configs/HBM_A/HBM_A.yaml `
-  --mode d2w_simulation `
-  --ds_name HBM_A/Center_IO `
-  --ds_dir input/HBM_A/Center_IO `
-  --criticality-profile default `
-  --save-failure-maps `
+python simulator_main.py 
+  --config configs/HBM_A/HBM_A.yaml 
+  --mode d2w_simulation 
+  --ds_name HBM_A/Center_IO 
+  --ds_dir input/HBM_A/Center_IO 
+  --criticality-profile default 
+  --save-failure-maps 
   --verbose
 ```
 
