@@ -721,91 +721,18 @@ sigma_eff_Cu(i)   = sigma_crit_Cu   - p(i)
 
 #### 5.1.3 Local Pad-Scale Stress Model
 
-这一节里出现的英文缩写和术语先统一解释如下：
+这一小节要做的事情是：建立两个“局部应力函数”，描述当 pad 表面有某个 dishing `D` 时，局部会产生多大的 peeling stress。
 
 ```text
-Local Pad-Scale Stress Model:
-  pad 局部尺度应力模型，意思是只看单个 pad 附近的 Cu/SiO2 接触、凹陷和热应力。
-
-dishing D:
-  碟形凹陷深度 / pad 表面凹陷量。
-
-pitch p:
-  pad 间距，相邻 pad 中心之间的距离。
-
-A_cell:
-  单个 pad 对应的周期单元面积。
-
-A_cu:
-  Cu pad 面积。
-
-A_ox:
-  oxide area，氧化物/SiO2 区域面积，也就是 A_cell - A_cu。
-
-CTE:
-  coefficient of thermal expansion，热膨胀系数。
-
-anneal temperature:
-  退火温度，代码里是 T_anl。
-
-T_R:
-  reference temperature，参考温度/室温。
-
-DeltaT:
-  温度变化量，DeltaT = T_anl - T_R。
-
-DeltaAlpha:
-  Cu 和 SiO2 的热膨胀系数差。
-
-sigma_t:
-  thermal mismatch stress，热失配应力。
-
-elastic:
-  弹性部分，应力低于 yield stress 时可恢复的变形部分。
-
-plastic:
-  塑性部分，应力超过 yield stress 后不可完全恢复的变形部分。
-
-yield stress / sigma_y:
-  屈服应力，材料从弹性变形进入塑性变形的阈值。
-
-heat stage:
-  升温/退火阶段。
-
-delta_heat:
-  heat stage 下由 Cu 热膨胀和弹塑性效应带来的等效位移量。
-
-contact fraction phi(D):
-  接触比例，表示在给定 dishing D 下 Cu 实际有效接触的比例。
-
-opening/contact:
-  opening 是界面开口量，contact 是有效接触；没有 opening/contact 时认为该项局部应力为 0。
-
-stiffness k_n:
-  局部法向刚度，描述界面对开口/闭合位移有多“硬”。
-
-heat-dwell:
-  升温并保温阶段。
-
-cool-down:
-  冷却阶段。
-
-BAUSCHINGER:
-  Bauschinger effect，包辛格效应系数，用来降低冷却阶段的有效屈服应力。
-
-area_factor:
-  面积修正因子，用 A_cell / A_cu 描述 Cu 面积占比对 Cu peeling stress 的影响。
-
-phi_factor:
-  接触比例修正因子，phi 越小，局部 Cu peeling stress 会被放大。
-
-peeling stress:
-  剥离应力，倾向于把界面拉开的应力。
+sigma_SiO2(D): 给定 dishing D 时，SiO2 侧的局部剥离应力
+sigma_Cu(D):   给定 dishing D 时，Cu 侧的局部剥离应力
 ```
 
-接下来要建立“给定 dishing `D` 时，会产生多大的局部 peeling stress”的函数，然后用上面的有效阈值去反解 `D`。
+有了这两个函数后，下一节就可以用有效阈值 `sigma_eff_SiO2(i)` / `sigma_eff_Cu(i)` 反推出允许的 `D_SiO2(i)` / `D_Cu(i)`。
 
-先定义 pad-scale 几何面积。设有效 pitch 为 `p`，Cu pad 直径为 `d`：
+##### 5.1.3.1 先定义一个 pad 周期单元
+
+模型先把每个 pad 周围的局部区域看成一个周期单元。设有效 pitch 为 `p`，Cu pad 直径为 `d`：
 
 ```text
 A_cell = p^2
@@ -813,13 +740,36 @@ A_cu   = pi * d^2 / 4
 A_ox   = A_cell - A_cu
 ```
 
-其中：
+参数解释：
 
 ```text
-d = 2 * PAD_TOP_R_um
+p:
+  effective pitch，有效 pad 间距。这里用于近似单个 pad 对应的周期单元边长。
+
+d:
+  Cu pad 直径，代码里 d = 2 * PAD_TOP_R_um。
+
+A_cell:
+  一个 pad 对应的周期单元面积。
+
+A_cu:
+  Cu pad 的面积。
+
+A_ox:
+  oxide area，氧化物/SiO2 区域面积，也就是周期单元里非 Cu 的面积。
 ```
 
-Cu 与 SiO2 的 CTE 不同，升温到 anneal temperature 后产生热失配应力：
+这一步的目的，是把局部结构简化成：
+
+```text
+一个 Cu 圆形 pad + 周围 SiO2 区域
+```
+
+后面的 SiO2 peeling stress 会用到 `A_cu / A_ox`，Cu peeling stress 会用到 `A_cell / A_cu`。
+
+##### 5.1.3.2 计算 Cu / SiO2 的热失配应力
+
+Cu 和 SiO2 的 CTE 不同。CTE 是 coefficient of thermal expansion（热膨胀系数）。升温时，Cu 和 SiO2 想膨胀的程度不同，于是产生 thermal mismatch stress（热失配应力）。
 
 ```text
 DeltaT = T_anl - T_R
@@ -828,7 +778,40 @@ DeltaAlpha = (CU_ALPHA_PPM - OX_ALPHA_PPM) * 1e-6
 sigma_t = (E_Cu / (1 - nu_Cu)) * DeltaAlpha * DeltaT
 ```
 
-再把热应力拆成 elastic / plastic 两部分：
+参数解释：
+
+```text
+T_anl:
+  anneal temperature，退火温度。
+
+T_R:
+  reference temperature，参考温度/室温。
+
+DeltaT:
+  温度变化量。
+
+CU_ALPHA_PPM:
+  Cu 的热膨胀系数，单位 ppm/C。
+
+OX_ALPHA_PPM:
+  SiO2 的热膨胀系数，单位 ppm/C。
+
+DeltaAlpha:
+  Cu 与 SiO2 的热膨胀系数差。乘 1e-6 是把 ppm 转成普通比例。
+
+E_Cu:
+  Cu 的 Young's modulus（杨氏模量）。
+
+nu_Cu:
+  Cu 的 Poisson ratio（泊松比）。
+
+sigma_t:
+  thermal mismatch stress，热失配应力。
+```
+
+##### 5.1.3.3 把热应力分成弹性和塑性两部分
+
+材料在低应力下主要是 elastic（弹性）响应；超过 yield stress（屈服应力）后，会进入 plastic（塑性）响应。代码把 `sigma_t` 拆成两部分：
 
 ```text
 sigma_y = SIGMA_Y_MPA * 1e6
@@ -837,7 +820,35 @@ sigma_e_heat = min(sigma_t, sigma_y)
 sigma_p_heat = max(sigma_t - sigma_y, 0)
 ```
 
-heat stage 的等效位移量：
+参数解释：
+
+```text
+SIGMA_Y_MPA:
+  Cu 的屈服应力，配置里单位是 MPa。
+
+sigma_y:
+  Cu 的屈服应力，转换成 Pa。
+
+sigma_e_heat:
+  heat stage（升温/退火阶段）中的弹性应力部分。
+
+sigma_p_heat:
+  heat stage 中超过屈服应力后的塑性应力部分。
+```
+
+直观理解：
+
+```text
+如果 sigma_t <= sigma_y:
+  全部是弹性部分，sigma_p_heat = 0。
+
+如果 sigma_t > sigma_y:
+  sigma_y 以内算弹性，超过 sigma_y 的部分算塑性。
+```
+
+##### 5.1.3.4 heat stage 下 Cu 能靠近多少
+
+接下来代码把弹性/塑性热应力转成一个等效位移量 `delta_heat`：
 
 ```text
 delta_heat
@@ -845,11 +856,44 @@ delta_heat
     * (C_HEAT_E * sigma_e_heat + C_HEAT_P * sigma_p_heat)
 ```
 
-对某个候选 dishing 值 `D`，Cu contact fraction 为：
+参数解释：
+
+```text
+delta_heat:
+  heat stage 下 Cu 热膨胀和弹塑性效应带来的等效接近/开口位移量。
+
+C_HEAT_E:
+  heat stage 中弹性应力对应的拟合系数。
+
+C_HEAT_P:
+  heat stage 中塑性应力对应的拟合系数。
+```
+
+这一步的物理含义是：升温后 Cu 会热膨胀，dishing 越小越容易接触，dishing 越大越难接触。`delta_heat` 可以理解为 heat stage 里 Cu 能用来“填补凹陷/形成接触”的位移尺度。
+
+##### 5.1.3.5 给定 dishing D，计算 Cu 接触比例 phi(D)
+
+`D` 是 dishing depth（碟形凹陷深度 / pad 表面凹陷量）。给定 `D` 后，代码估计 Cu 的有效接触比例 `phi(D)`：
 
 ```text
 phi(D) = clip(((delta_heat - 2D) / (2D)) ^ EXP_PHI, 0, 1),  D > 0
 phi(0) = 1
+```
+
+参数解释：
+
+```text
+phi(D):
+  contact fraction，接触比例。值越接近 1，说明 Cu 有效接触越充分；值越接近 0，说明几乎没有有效接触。
+
+2D:
+  top/bottom 两侧 dishing 合起来的凹陷尺度。
+
+EXP_PHI:
+  接触比例模型的指数拟合参数。
+
+clip(..., 0, 1):
+  把计算结果限制在 0 到 1 之间。
 ```
 
 如果：
@@ -858,45 +902,116 @@ phi(0) = 1
 delta_heat - 2D <= 0
 ```
 
-则认为没有有效 opening/contact：
+说明 heat stage 的等效位移不足以补偿 top/bottom 两侧 dishing，因此认为没有有效 contact（接触）：
 
 ```text
 phi(D) = 0
 ```
 
-局部 stiffness：
+##### 5.1.3.6 计算局部法向刚度 k_n
+
+局部法向刚度描述界面对开口/闭合位移有多“硬”：
 
 ```text
 k_n = 2 * E_Cu / (KN_DEN_M * (1 - nu_Cu))
 ```
 
-SiO2 的 heat-dwell peeling stress：
+参数解释：
+
+```text
+k_n:
+  local normal stiffness，局部法向刚度。
+
+KN_DEN_M:
+  法向刚度模型里的等效长度尺度，配置里单位是 m。
+
+E_Cu, nu_Cu:
+  Cu 的杨氏模量和泊松比。
+```
+
+`k_n` 越大，表示同样的开口/闭合位移会产生更大的局部应力。
+
+##### 5.1.3.7 SiO2 的 heat-dwell peeling stress
+
+SiO2 的局部剥离应力在 heat-dwell（升温并保温阶段）计算。公式是：
 
 ```text
 sigma_SiO2(D)
   = k_n * (delta_heat - 2D) * (phi(D) * A_cu) / A_ox
 ```
 
-如果 `delta_heat - 2D <= 0` 或 `phi(D) <= 0`，则：
+参数解释：
+
+```text
+sigma_SiO2(D):
+  给定 dishing D 时，SiO2 侧的局部 peeling stress（剥离应力）。
+
+delta_heat - 2D:
+  heat stage 后还剩下的有效 opening/contact 驱动力。
+
+phi(D) * A_cu:
+  实际参与接触的 Cu 面积。
+
+A_ox:
+  SiO2 区域面积。Cu 接触力通过周围 oxide 区域传递时，会按 A_cu / A_ox 形成面积放大/分摊关系。
+```
+
+如果没有有效接触：
+
+```text
+delta_heat - 2D <= 0
+```
+
+或者接触比例为 0：
+
+```text
+phi(D) <= 0
+```
+
+则：
 
 ```text
 sigma_SiO2(D) = 0
 ```
 
-Cu 的 cool-down stress 要先计算 cool-down 的有效 yield stress：
+##### 5.1.3.8 cool-down 阶段的 Cu 有效屈服应力
+
+Cu 的 peeling stress 在 cool-down（冷却阶段）计算。冷却时先考虑 Bauschinger effect（包辛格效应），它会降低反向加载时的有效屈服应力：
 
 ```text
 sigma_y_cool = (1 - BAUSCHINGER) * sigma_y
 ```
 
-然后：
+参数解释：
+
+```text
+BAUSCHINGER:
+  Bauschinger effect，包辛格效应系数。数值越大，冷却阶段有效屈服应力降得越多。
+
+sigma_y_cool:
+  cool-down 阶段使用的有效屈服应力。
+```
+
+然后用新的 `sigma_y_cool` 再拆一次弹性/塑性部分：
 
 ```text
 sigma_e_cool = min(sigma_t, sigma_y_cool)
 sigma_p_cool = max(sigma_t - sigma_y_cool, 0)
 ```
 
-cool-down 位移量：
+参数解释：
+
+```text
+sigma_e_cool:
+  cool-down 阶段的弹性应力部分。
+
+sigma_p_cool:
+  cool-down 阶段的塑性应力部分。
+```
+
+##### 5.1.3.9 cool-down 位移量 delta_cool
+
+cool-down 阶段也会得到一个等效位移量：
 
 ```text
 delta_cool
@@ -904,7 +1019,22 @@ delta_cool
     * (C_COOL_E * sigma_e_cool + C_COOL_P * sigma_p_cool)
 ```
 
-Cu peeling stress：
+参数解释：
+
+```text
+delta_cool:
+  cool-down 阶段由弹塑性应力贡献得到的等效位移量。
+
+C_COOL_E:
+  cool-down 阶段弹性应力对应的拟合系数。
+
+C_COOL_P:
+  cool-down 阶段塑性应力对应的拟合系数。
+```
+
+##### 5.1.3.10 Cu 的 cool-down peeling stress
+
+最后计算 Cu 侧的局部剥离应力：
 
 ```text
 area_factor = (A_cell / A_cu) ^ EXP_AREA
@@ -916,7 +1046,35 @@ sigma_Cu(D)
     * area_factor
 ```
 
-如果 `phi(D) <= 0` 或：
+参数解释：
+
+```text
+sigma_Cu(D):
+  给定 dishing D 时，Cu 侧的局部 peeling stress（剥离应力）。
+
+delta_cool - delta_heat + 2D:
+  cool-down 相对 heat stage 后的有效开口/剥离驱动力。
+
+area_factor:
+  面积修正因子。A_cell / A_cu 越大，说明 Cu 占周期单元面积越小，应力集中效应越强。
+
+EXP_AREA:
+  面积修正的指数拟合参数。
+
+phi_factor:
+  接触比例修正因子。phi(D) 越小，说明接触越少，局部 Cu peeling stress 会被放大。
+
+EXP_INVPHI:
+  接触比例修正的指数拟合参数。
+```
+
+如果没有有效接触：
+
+```text
+phi(D) <= 0
+```
+
+或者 cool-down 的有效剥离驱动力不为正：
 
 ```text
 delta_cool - delta_heat + 2D <= 0
@@ -926,6 +1084,30 @@ delta_cool - delta_heat + 2D <= 0
 
 ```text
 sigma_Cu(D) = 0
+```
+
+##### 5.1.3.11 这一节的输出是什么
+
+到这里，本节最终得到两个函数：
+
+```text
+sigma_SiO2(D)
+sigma_Cu(D)
+```
+
+它们的作用是：
+
+```text
+给定一个候选 dishing D
+  -> 算出 SiO2 局部剥离应力
+  -> 算出 Cu 局部剥离应力
+```
+
+下一节会把这两个函数反过来用：
+
+```text
+给定允许的应力阈值 sigma_eff
+  -> 反解出允许的 dishing D
 ```
 
 #### 5.1.4 反解 Dishing 边界
@@ -1076,79 +1258,367 @@ D2W/esd_yield_calculator.py
 pad_esd_yield_map_generator()
 ```
 
-ESD 的 pad risk 不是简单地每个 pad 独立抽一次失效，而是先计算某个 pad 成为 first-touch / discharge pad 的概率，再乘以该电压下 die-level ESD failure probability。
-
-### 6.1 电压到放电距离
-
-charging voltage `V` 在 `[V_MIN_V, V_MAX_V]` 上做 Gauss-Legendre 积分。每个电压对应最大 arcing distance `d_arc(V)`。
-
-代码里的 modified Paschen curve 是：
+ESD（electrostatic discharge，静电放电）的 pad risk 不是简单地假设“每个 pad 独立失效”。当前代码的思路是：
 
 ```text
-V = 97 d                                      , d < 3.5 um
-V = 337                                      , 3.5 um < d < 7 um
-V = 170 + 2.48 d + 58 sqrt(d)                , d > 7 um
+1. 抽象一个 charging voltage V（带电电压）
+2. 由 V 算出可能发生放电的 arcing distance（放电距离）
+3. 由 V 算出这次放电若发生时的 die-level failure probability（die 级失效概率）
+4. 在给定 tilt（倾斜）和 dishing（凹陷）随机性的情况下，计算哪个 pad 最可能 first-touch（最先接触/最先放电）
+5. pad i 的 ESD risk = 它成为 first-touch pad 的概率 * 该电压下 ESD 失效概率，再对 V 和 tilt 做积分平均
 ```
 
-实际计算中给定 `V`，反解 `d_arc(V)`。
+最后得到：
 
-### 6.2 电压到 single-event failure probability
+```text
+Y_esd(i) = 1 - R_esd(i)
+```
 
-先用 die area 和 charging voltage 估算 peak current：
+其中 `R_esd(i)` 是 pad `i` 的 ESD failure probability（ESD 失效概率）。
+
+### 6.1 输入：有效 pad 坐标和基础参数
+
+ESD 计算只在有效 pad 上做。输入坐标为：
+
+```text
+pad_coords_um[i] = (x_i, y_i)
+```
+
+参数解释：
+
+```text
+x_i, y_i:
+  pad i 的中心坐标，单位 um。
+
+pad_size_um:
+  pad 尺寸，当前调用中使用 2 * PAD_TOP_R_um。
+
+pad_pitch_um:
+  pad pitch，pad 间距，用于画图和部分几何尺度。
+
+top_die_w_um, top_die_h_um:
+  top die 的宽和高，单位 um，用于计算 die 面积。
+```
+
+### 6.2 电压积分：charging voltage `V`
+
+ESD 风险和带电电压有关。代码假设 charging voltage（带电电压）`V` 在：
+
+```text
+[V_MIN_V, V_MAX_V]
+```
+
+这个区间内取值，并用 Gauss-Legendre quadrature（高斯-勒让德积分）做数值积分。
+
+参数解释：
+
+```text
+V_MIN_V:
+  电压积分下界，单位 V。
+
+V_MAX_V:
+  电压积分上界，单位 V。
+
+ESD_ANALYTICAL_VOLTAGE_Q:
+  电压方向的积分点数量。点数越多，积分更细，但计算更慢。
+```
+
+对每个电压积分点 `V`，代码都会计算两件事：
+
+```text
+d_arc(V): 这个电压下可能跨越的最大放电距离
+p_fail(V): 这个电压下单次 ESD 事件导致 die 失效的概率
+```
+
+### 6.3 电压到放电距离 `d_arc(V)`
+
+`d_arc(V)` 是 arcing distance（放电距离）：给定电压 `V`，空气间隙最大能隔多远仍可能发生放电。
+
+代码使用 modified Paschen curve（修正 Paschen 曲线）：
+
+```text
+V = 97 d,                         d < 3.5 um
+V = 337,                          3.5 um < d < 7 um
+V = 170 + 2.48 d + 58 sqrt(d),    d > 7 um
+```
+
+参数解释：
+
+```text
+V:
+  charging voltage，带电电压，单位 V。
+
+d:
+  air-gap distance，空气间隙距离，单位 um。
+
+d_arc(V):
+  给定 V 后反解出来的最大放电距离，单位 um。
+```
+
+实际计算时，代码是给定 `V`，反过来求 `d_arc(V)`：
+
+```text
+d_arc(V) = inverse_Paschen(V)
+```
+
+直觉上：
+
+```text
+V 越大，可跨越的空气间隙越大，越远的 pad 也可能发生放电。
+```
+
+### 6.4 电压到 die-level ESD failure probability
+
+接下来，代码估计电压 `V` 对应的 peak current（峰值电流）。先算 die 面积：
 
 ```text
 A_die_mm2 = (top_die_w_um * 1e-3) * (top_die_h_um * 1e-3)
+```
+
+参数解释：
+
+```text
+top_die_w_um, top_die_h_um:
+  top die 的宽和高，单位 um。
+
+1e-3:
+  把 um 转成 mm。
+
+A_die_mm2:
+  die 面积，单位 mm^2。
+```
+
+然后用经验公式计算峰值电流：
+
+```text
 I_peak(V) = 0.0045 * A_die_mm2^0.35 * sqrt(V)
 ```
 
-再用 Weibull CDF 得到 single-event failure probability：
+参数解释：
+
+```text
+I_peak(V):
+  peak current，峰值电流，单位 A。
+
+0.0045 和 0.35:
+  经验拟合系数，用来描述 die 面积和电压对 ESD 峰值电流的影响。
+```
+
+再用 Weibull CDF（Weibull cumulative distribution function，Weibull 累积分布函数）得到单次事件失效概率：
 
 ```text
 p_fail(V) =
-  0,                                  I_peak < CUTOFF_MIN_A
-  1 - exp(-(I_peak / lambda)^k),       otherwise
+  0,                                  I_peak(V) < CUTOFF_MIN_A
+  1 - exp(-(I_peak(V) / lambda)^k),   otherwise
 ```
 
-其中 `k = WEIBULL_K`，`lambda = WEIBULL_LAMBDA`。
+参数解释：
 
-### 6.3 固定 tilt 和 voltage 下的 first-touch probability
+```text
+p_fail(V):
+  single-event failure probability，单次 ESD 事件造成 die 失效的概率。
 
-对 tilt：
+CUTOFF_MIN_A:
+  最小电流门槛。如果 I_peak 低于这个值，认为不会触发 ESD 失效。
+
+k:
+  Weibull shape parameter，形状参数，代码里是 WEIBULL_K。
+
+lambda:
+  Weibull scale parameter，尺度参数，代码里是 WEIBULL_LAMBDA。
+```
+
+直觉上：
+
+```text
+I_peak 越大，p_fail(V) 越大。
+```
+
+### 6.5 tilt 随机性：die 不是完全平行靠近
+
+ESD first-touch 还取决于两片 die/wafer 靠近时的倾斜。代码把 x/y 两个方向的 tilt（倾斜角）建模为正态分布：
 
 ```text
 theta_x ~ Normal(TILT_X_MEAN_DEG, TILT_X_STD_DEG)
 theta_y ~ Normal(TILT_Y_MEAN_DEG, TILT_Y_STD_DEG)
 ```
 
-代码用 Gauss-Hermite 积分遍历 tilt 组合。
+参数解释：
 
-在固定 `theta_x`、`theta_y` 下，先对每个 pad 算 deterministic contact limit：
+```text
+theta_x:
+  x 方向 tilt，单位 degree（度）。
+
+theta_y:
+  y 方向 tilt，单位 degree（度）。
+
+TILT_X_MEAN_DEG, TILT_Y_MEAN_DEG:
+  tilt 均值。
+
+TILT_X_STD_DEG, TILT_Y_STD_DEG:
+  tilt 标准差。
+```
+
+代码用 Gauss-Hermite quadrature（高斯-赫米特积分）对 tilt 分布做积分。
+
+参数解释：
+
+```text
+ESD_ANALYTICAL_OUTER_QX:
+  theta_x 方向的积分点数量。
+
+ESD_ANALYTICAL_OUTER_QY:
+  theta_y 方向的积分点数量。
+```
+
+### 6.6 固定 tilt 下，每个 pad 的 deterministic contact limit
+
+在某一组固定的 `theta_x`、`theta_y` 下，代码先计算每个 pad 的 deterministic contact limit（确定性接触界限）：
 
 ```text
 C_i = z_top + a * x_i + b * y_i - corner_drop
 ```
 
-其中 `a`、`b` 来自倾斜平面，`corner_drop` 由 pad size 和 tilt 决定。
+参数解释：
 
-top+bottom dishing 合并为：
+```text
+C_i:
+  pad i 的确定性接触界限。可以理解为不考虑随机 dishing 时，pad i 还有多少几何 gap margin。
+
+z_top:
+  top die 的初始 z 方向偏移，当前默认是 0。
+
+a, b:
+  由 theta_x / theta_y 转换来的倾斜平面系数。它们描述 x/y 位置变化会如何改变局部 gap。
+
+x_i, y_i:
+  pad i 的中心坐标。
+
+corner_drop:
+  pad 不是一个点，而是有尺寸。倾斜时最低角会比中心更早接触，corner_drop 用来扣掉这个角点效应。
+```
+
+更直观地说：
+
+```text
+如果 die 有 tilt，那么不同位置的 pad 到对面表面的距离不同。
+某些边缘或角落 pad 会更早接近对面，成为 first-touch pad 的概率更高。
+```
+
+### 6.7 top/bottom dishing 的随机 gap
+
+除了 tilt，pad 本身的 top/bottom dishing 也会改变局部 gap。代码把 top pad 和 bottom pad 的 dishing 合并成一个随机变量：
 
 ```text
 H_i ~ Normal(mu_h, sigma_h)
+
 mu_h    = (TOP_DISH_MEAN_nm + BOT_DISH_MEAN_nm) * 1e-3
 sigma_h = sqrt(TOP_DISH_STD_nm^2 + BOT_DISH_STD_nm^2) * 1e-3
 ```
 
-ESD first-touch 的直觉是：在当前 tilt 和 arcing distance 下，最先满足 gap 条件的 pad 承担 discharge risk。代码通过一维 gap 积分 `_fixed_tilt_probability_map_with_arcing()` 计算：
+参数解释：
+
+```text
+H_i:
+  pad i 的 top+bottom 合并 dishing 随机量，单位 um。
+
+TOP_DISH_MEAN_nm, BOT_DISH_MEAN_nm:
+  top/bottom pad dishing 均值，单位 nm。
+
+TOP_DISH_STD_nm, BOT_DISH_STD_nm:
+  top/bottom pad dishing 标准差，单位 nm。
+
+1e-3:
+  把 nm 转成 um。
+
+mu_h:
+  top+bottom 合并后的均值。
+
+sigma_h:
+  top+bottom 合并后的标准差。两个独立正态分布相加，所以方差相加。
+```
+
+### 6.8 first-touch probability：哪个 pad 最先放电
+
+在固定 `V`、`theta_x`、`theta_y` 下，代码要计算：
 
 ```text
 P_first(i | theta_x, theta_y, V)
 ```
 
-并保证所有候选 pad 的概率归一化。
+含义是：
 
-### 6.4 ESD pad risk 和 yield
+```text
+在当前电压和倾斜条件下，pad i 成为 first-touch / first-discharge pad 的概率。
+```
 
-对 voltage 与 tilt 积分后，pad `i` 的 ESD risk 为：
+first-touch 的判断和两个量有关：
+
+```text
+C_i:
+  tilt 决定的确定性 contact limit。
+
+H_i:
+  dishing 带来的随机 gap 变化。
+```
+
+同时，电压 `V` 给出 arcing distance：
+
+```text
+d_arc(V)
+```
+
+如果某个 pad 的实际 gap 已经小到 `d_arc(V)` 可以跨越，那么它就可能先发生 discharge（放电）。代码用 `_fixed_tilt_probability_map_with_arcing()` 做一维 gap 积分，得到所有候选 pad 的 first-touch 概率。
+
+为了加速，代码会先选 candidate pads（候选 pad）：
+
+```text
+只评估 deterministic contact limit C_i 接近最小值的一批 pad
+```
+
+参数解释：
+
+```text
+ESD_ANALYTICAL_CANDIDATE_SIGMA_WINDOW:
+  用 sigma_h 的倍数定义候选窗口。越大，候选 pad 越多，越准确但越慢。
+
+ESD_ANALYTICAL_CANDIDATE_MIN_PADS:
+  候选 pad 的最小数量，避免候选集合太小。
+
+ESD_ANALYTICAL_CANDIDATE_DISABLE_FRACTION:
+  如果候选 pad 占总 pad 比例太高，就关闭 pruning，直接评估全体 pad。
+
+ESD_ANALYTICAL_INNER_Q:
+  gap 积分的积分点数量。
+```
+
+最后会归一化：
+
+```text
+sum_i P_first(i | theta_x, theta_y, V) = 1
+```
+
+也就是在某一次固定条件下，总会有某个 pad 承担 first-touch / discharge risk。
+
+### 6.9 ESD pad risk 和 yield
+
+对一个固定电压和固定 tilt 条件，pad `i` 的风险贡献是：
+
+```text
+p_fail(V) * P_first(i | theta_x, theta_y, V)
+```
+
+参数解释：
+
+```text
+p_fail(V):
+  如果发生 ESD event，该电压下 die 失效的概率。
+
+P_first(i | theta_x, theta_y, V):
+  pad i 在当前几何状态下成为 first-touch / discharge pad 的概率。
+```
+
+然后代码对 voltage（电压）和 tilt（倾斜）做期望积分：
 
 ```text
 R_esd(i)
@@ -1157,17 +1627,24 @@ R_esd(i)
     ]
 ```
 
-因此：
+参数解释：
+
+```text
+R_esd(i):
+  pad i 的 ESD failure probability，ESD 失效概率。
+
+E_V,theta:
+  对 charging voltage V 和 tilt theta_x/theta_y 做期望，也就是积分平均。
+```
+
+最终：
 
 ```text
 Y_esd(i) = 1 - R_esd(i)
-```
-
-ESD yield loss：
-
-```text
 P_esd_fail(i) = 1 - Y_esd(i) = R_esd(i)
 ```
+
+也就是说，ESD yield loss 本身就是 `R_esd(i)`。
 
 ## 7. 四种 loss 的合并关系
 
