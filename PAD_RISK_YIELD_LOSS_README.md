@@ -600,7 +600,7 @@ p_max = K * M / (2 * beta * D1)
 
 ```text
 D1, D2:
-  bottom/top wafer effective bending stiffness
+  bottom/top wafer effective bending stiffness(抗弯刚度)
 
 E_A, E_B:
   bottom/top wafer effective Young's modulus
