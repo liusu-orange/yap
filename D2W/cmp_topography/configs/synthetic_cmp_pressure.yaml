@@ -1,0 +1,29 @@
+contact_pressure:
+  # Global average CMP contact pressure. The macro pressure map is normalized
+  # so its spatial mean equals this value.
+  p0_kpa: 30.0
+
+  # Effective-density to macro-pressure compact model:
+  #   F_raw = (rho_eff + density_epsilon)^(-density_alpha) * F_edge
+  #   P_macro = p0_kpa * F_raw / mean(F_raw)
+  density_epsilon: 0.05
+  density_alpha: 0.8
+
+  # Optional radial edge-of-equipment factor:
+  #   F_edge = 1 + edge_beta * r_norm^edge_exponent
+  edge_beta: 0.1
+  edge_exponent: 4.0
+
+  # Cu pad local pressure gain:
+  #   F_pad = 1 + pad_size_coeff * (W / reference_pad_size_um)^pad_size_exponent
+  reference_pad_size_um: 10.0
+  pad_size_coeff: 0.2
+  pad_size_exponent: 1.0
+
+  # Compact Preston removal-rate model:
+  #   MRR_Cu = K_Cu * P_Cu * V
+  #   MRR_diel = K_diel * P_macro * V
+  preston_k_cu_nm_per_min_kpa: 1.0
+  preston_k_diel_nm_per_min_kpa: 0.5
+  polish_time_min: 0.0877
+  platen_velocity: 1.0
