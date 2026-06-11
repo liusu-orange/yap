@@ -1,0 +1,37 @@
+{
+  "density_dir": "output\\cmp_topography\\synthetic_cmp",
+  "gds_path": "input\\cmp_topography\\synthetic_cmp.gds",
+  "layer": 10,
+  "datatype": 0,
+  "model": {
+    "p0_kpa": 30.0,
+    "density_epsilon": 0.05,
+    "density_alpha": 0.8,
+    "edge_beta": 0.1,
+    "edge_exponent": 4.0,
+    "reference_pad_size_um": 10.0,
+    "pad_size_coeff": 0.2,
+    "pad_size_exponent": 1.0,
+    "preston_k_cu_nm_per_min_kpa": 1.0,
+    "preston_k_diel_nm_per_min_kpa": 0.5,
+    "polish_time_min": 0.0877,
+    "platen_velocity": 1.0
+  },
+  "map_shape": [
+    80,
+    100
+  ],
+  "cu_tile_count": 2552,
+  "pressure_macro_mean_kpa": 30.0,
+  "pressure_macro_min_kpa": 15.61113681825365,
+  "pressure_macro_max_kpa": 57.01547193938046,
+  "pressure_cu_mean_kpa": 29.953038377053165,
+  "pressure_cu_min_kpa": 18.733364181904378,
+  "pressure_cu_max_kpa": 78.91607855751235,
+  "dishing_mean_nm": 1.6959077475295035,
+  "dishing_min_nm": 0.9583676892725914,
+  "dishing_max_nm": 4.9984567313011015,
+  "mu_h_mean_nm": -1.6959077475295035,
+  "mu_h_min_nm": -4.9984567313011015,
+  "mu_h_max_nm": -0.9583676892725914
+}

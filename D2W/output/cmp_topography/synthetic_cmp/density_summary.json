@@ -1,0 +1,24 @@
+{
+  "gds_path": "input\\cmp_topography\\synthetic_cmp.gds",
+  "layer": 10,
+  "datatype": 0,
+  "polygon_count": 1748,
+  "bounds_um": [
+    0.0,
+    0.0,
+    2000.0,
+    1600.0
+  ],
+  "tile_size_um": 20.0,
+  "interaction_length_um": 150.0,
+  "map_shape": [
+    80,
+    100
+  ],
+  "local_density_min": 0.0,
+  "local_density_max": 1.0,
+  "local_density_mean": 0.10525,
+  "effective_density_min": 0.014652359182751474,
+  "effective_density_max": 0.24279005919024102,
+  "effective_density_mean": 0.10979200621447248
+}
